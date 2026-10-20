@@ -3,17 +3,18 @@ import React, { useEffect, useState } from 'react'
 
 import { removeHabit, saveHabit, setArchived, today } from './actions'
 import { getEnv } from './env'
-import { DOW_CHARS, DOW_ORDER, normalizeTime, type Frequency, type Habit } from './model'
+import { lang, tr, useLanguage } from './i18n'
+import { DOW_ORDER, normalizeTime, weekdayName, type Frequency, type Habit } from './model'
 import { getStore } from './store'
 import { editing, selectedHabit } from './view-state'
 
 type Kind = Frequency['kind']
 
 const KINDS: Array<{ value: Kind; label: string }> = [
-  { value: 'daily', label: '毎日' },
-  { value: 'weekdays', label: '曜日を指定' },
-  { value: 'weekly', label: '週に◯回' },
-  { value: 'interval', label: '◯日ごと' }
+  { value: 'daily', get label() { return tr('Daily', '毎日') } },
+  { value: 'weekdays', get label() { return tr('Specific weekdays', '曜日を指定') } },
+  { value: 'weekly', get label() { return tr('N times a week', '週に◯回') } },
+  { value: 'interval', get label() { return tr('Every N days', '◯日ごと') } }
 ]
 
 const EMOJIS = ['💧', '🏃', '📚', '🧘', '💪', '🛌', '🥗', '💊', '🧹', '✍️', '🎸', '🇬🇧', '💻', '🚶', '☀️', '🌙']
@@ -58,17 +59,18 @@ function toFrequency(f: Form): Frequency {
 
 function validate(f: Form, original?: Habit): string | null {
   const name = f.name.trim()
-  if (!name) return '名前を入力してください'
-  if (/[|]|\s·\s/.test(name)) return '名前に「|」「 · 」は使えません'
+  if (!name) return tr('Enter a name', '名前を入力してください')
+  if (/[|]|\s·\s/.test(name)) return tr('Names can\'t contain "|" or " · "', '名前に「|」「 · 」は使えません')
   const taken = getStore()?.data.habits.some(h => h.name === name && h.name !== original?.name)
-  if (taken) return '同じ名前の習慣があります'
-  if (f.kind === 'weekdays' && !f.days.length) return '曜日を1つ以上選んでください'
-  if (f.times.some(t => !/^\d{2}:\d{2}$/.test(t))) return '通知時刻を正しく入力してください'
+  if (taken) return tr('A habit with this name already exists', '同じ名前の習慣があります')
+  if (f.kind === 'weekdays' && !f.days.length) return tr('Choose at least one weekday', '曜日を1つ以上選んでください')
+  if (f.times.some(t => !/^\d{2}:\d{2}$/.test(t))) return tr('Enter valid reminder times', '通知時刻を正しく入力してください')
   return null
 }
 
 /** Adds or edits a habit: name, schedule, reminder times, start date. */
 export const EditDialog: React.FC = () => {
+  useLanguage()
   const [{ Dialog, Button }] = useState(() => ({
     Dialog: getEnv().components.classes.Dialog as DialogType,
     Button: getEnv().components.getComponentClass<ButtonProps>('Button')!
@@ -137,7 +139,7 @@ export const EditDialog: React.FC = () => {
             submit()
           }}
         >
-          <h3>{original ? '習慣を編集' : '習慣を追加'}</h3>
+          <h3>{original ? tr('Edit habit', '習慣を編集') : tr('Add habit', '習慣を追加')}</h3>
 
           <div className="row name-row">
             <input
@@ -146,12 +148,12 @@ export const EditDialog: React.FC = () => {
               placeholder="🙂"
               maxLength={8}
               onChange={e => set({ emoji: e.target.value })}
-              aria-label="絵文字"
+              aria-label={tr('Emoji', '絵文字')}
             />
             <input
               className="name-input"
               value={form.name}
-              placeholder="習慣の名前（例: 水を2L飲む）"
+              placeholder={tr('Habit name (e.g. Drink 2L of water)', '習慣の名前（例: 水を2L飲む）')}
               autoFocus
               onChange={e => set({ name: e.target.value })}
             />
@@ -164,7 +166,7 @@ export const EditDialog: React.FC = () => {
             ))}
           </div>
 
-          <label className="field-label">頻度</label>
+          <label className="field-label">{tr('Frequency', '頻度')}</label>
           <div className="segmented">
             {KINDS.map(k => (
               <button type="button" key={k.value} className={form.kind === k.value ? 'selected' : ''} onClick={() => set({ kind: k.value })}>
@@ -176,14 +178,14 @@ export const EditDialog: React.FC = () => {
             <div className="weekdays">
               {DOW_ORDER.map(d => (
                 <button type="button" key={d} className={form.days.includes(d) ? 'selected' : ''} onClick={() => toggleDay(d)}>
-                  {DOW_CHARS[d]}
+                  {weekdayName(d, lang())}
                 </button>
               ))}
             </div>
           )}
           {form.kind === 'weekly' && (
             <div className="row inline">
-              週に
+              {tr('', '週に')}
               <input
                 type="number"
                 min={1}
@@ -191,7 +193,10 @@ export const EditDialog: React.FC = () => {
                 value={form.timesPerWeek}
                 onChange={e => set({ timesPerWeek: Math.min(7, Math.max(1, Number(e.target.value) || 1)) })}
               />
-              回（曜日は自由。達成するまで毎日通知します）
+              {tr(
+                'times a week (any days; you are reminded daily until the goal is met)',
+                '回（曜日は自由。達成するまで毎日通知します）'
+              )}
             </div>
           )}
           {form.kind === 'interval' && (
@@ -203,11 +208,11 @@ export const EditDialog: React.FC = () => {
                 value={form.every}
                 onChange={e => set({ every: Math.max(2, Number(e.target.value) || 2) })}
               />
-              日ごと（開始日から数えます）
+              {tr('days (counted from the start date)', '日ごと（開始日から数えます）')}
             </div>
           )}
 
-          <label className="field-label">通知時刻</label>
+          <label className="field-label">{tr('Reminder times', '通知時刻')}</label>
           <div className="times">
             {form.times.map((t, i) => (
               <span className="time" key={i}>
@@ -216,26 +221,28 @@ export const EditDialog: React.FC = () => {
                   value={t}
                   onChange={e => set({ times: form.times.map((x, j) => (j === i ? e.target.value : x)) })}
                 />
-                <button type="button" title="削除" onClick={() => set({ times: form.times.filter((_, j) => j !== i) })}>
+                <button type="button" title={tr('Remove', '削除')} onClick={() => set({ times: form.times.filter((_, j) => j !== i) })}>
                   ✕
                 </button>
               </span>
             ))}
             <button type="button" className="add-time" onClick={() => set({ times: [...form.times, form.times.at(-1) ?? '09:00'] })}>
-              ＋ 時刻を追加
+              ＋ {tr('Add time', '時刻を追加')}
             </button>
-            {!form.times.length && <span className="hint">通知しません</span>}
+            {!form.times.length && <span className="hint">{tr('No reminders', '通知しません')}</span>}
           </div>
 
-          <label className="field-label">開始日</label>
+          <label className="field-label">{tr('Start date', '開始日')}</label>
           <div className="row inline">
             <input type="date" value={form.start} onChange={e => set({ start: e.target.value })} />
             {form.start ? (
               <button type="button" className="link" onClick={() => set({ start: '' })}>
-                クリア
+                {tr('Clear', 'クリア')}
               </button>
             ) : (
-              <span className="hint">{form.kind === 'interval' ? '未指定なら今日から' : '未指定なら最初の記録から'}</span>
+              <span className="hint">{form.kind === 'interval'
+                  ? tr('If empty, from today', '未指定なら今日から')
+                  : tr('If empty, from the first check-in', '未指定なら最初の記録から')}</span>
             )}
           </div>
 
@@ -248,27 +255,27 @@ export const EditDialog: React.FC = () => {
         {original && !confirmDelete && (
           <div className="left">
             <Button basic disabled={busy} onClick={() => run(() => setArchived(original, !original.archived))}>
-              {original.archived ? '再開する' : 'アーカイブ'}
+              {original.archived ? tr('Unarchive', '再開する') : tr('Archive', 'アーカイブ')}
             </Button>
             <Button basic negative disabled={busy} onClick={() => setConfirmDelete(true)}>
-              削除
+              {tr('Delete', '削除')}
             </Button>
           </div>
         )}
         {original && confirmDelete && (
           <div className="left confirm">
-            <span>記録ごと削除しますか？</span>
+            <span>{tr('Delete it along with its check-ins?', '記録ごと削除しますか？')}</span>
             <Button negative disabled={busy} onClick={() => run(() => removeHabit(original.name))}>
-              削除する
+              {tr('Delete', '削除する')}
             </Button>
             <Button basic onClick={() => setConfirmDelete(false)}>
-              やめる
+              {tr('Keep', 'やめる')}
             </Button>
           </div>
         )}
-        <Button onClick={close}>キャンセル</Button>
+        <Button onClick={close}>{tr('Cancel', 'キャンセル')}</Button>
         <Button primary disabled={busy} onClick={submit}>
-          保存
+          {tr('Save', '保存')}
         </Button>
       </Dialog.Actions>
     </Dialog>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 
 import { getEnv, peekEnv } from './env'
+import { lang, tr, useLanguage } from './i18n'
 import { MARKER, addDays, markOf, parseDate, todayState, weekStartOf, type Habit } from './model'
 import { getStore } from './store'
 import { HabitRow, HabitsIcon, WeekHead, useHabitData, useToday, useWeekStart } from './view'
@@ -16,10 +17,10 @@ function textOf(node: any): string {
 }
 
 /** The intro the plugin writes under the marker. */
-const INTRO_RE = /^(習慣の一覧と達成記録です|書式[:：])/
+const INTRO_RE = /^(習慣の一覧と達成記録です|書式[:：]|Your habits and check-ins\.|Format:)/
 
 /**
- * In the habits note, swaps the 習慣 / 記録 sections (and the intro) for one
+ * In the habits note, swaps the 習慣 / 記録 (Habits / Records) sections (and the intro) for one
  * dashboard element. Anything else written in the note is kept.
  */
 export function remarkHabits() {
@@ -35,7 +36,7 @@ export function remarkHabits() {
       if (node.type === 'paragraph' && !inSection && INTRO_RE.test(textOf(node))) continue
       if (node.type === 'heading') {
         const title = textOf(node)
-        inSection = title.includes('習慣') || title.includes('記録')
+        inSection = title.includes('習慣') || title.includes('記録') || /^(habits|records)\b/i.test(title.trim())
         if (inSection) {
           if (!inserted) out.push(dashboard)
           inserted = true
@@ -53,6 +54,7 @@ const RECENT_DAYS = 28
 
 /** Rendered in place of the habits sections in the preview. */
 export const HabitsDashboard: React.FC = () => {
+  useLanguage()
   const { data } = useHabitData()
   const today = useToday()
   const weekStart = useWeekStart()
@@ -74,23 +76,23 @@ export const HabitsDashboard: React.FC = () => {
     <div className="habits-dashboard" contentEditable={false}>
       <div className="dash-head">
         <HabitsIcon />
-        <span className="dash-title">習慣トラッカー</span>
+        <span className="dash-title">{tr('Habit tracker', '習慣トラッカー')}</span>
         {due > 0 && (
           <span className="dash-progress">
-            今日 {done}/{due}
+            {tr('Today', '今日')} {done}/{due}
           </span>
         )}
         <span className="spacer" />
         <button className="habits-button" onClick={() => editing.set({})}>
-          ＋ 追加
+          ＋ {tr('Add', '追加')}
         </button>
         <button className="habits-button primary" onClick={() => open()}>
-          習慣ページを開く
+          {tr('Open habits page', '習慣ページを開く')}
         </button>
       </div>
 
       {active.length === 0 ? (
-        <div className="dash-empty">まだ習慣がありません。「＋ 追加」から登録できます。</div>
+        <div className="dash-empty">{tr('No habits yet. Add one with "＋ Add".', 'まだ習慣がありません。「＋ 追加」から登録できます。')}</div>
       ) : (
         <div className="habits-list embedded">
           <WeekHead week={week} today={today} />
@@ -113,7 +115,7 @@ export const HabitsDashboard: React.FC = () => {
 
       {active.length > 0 && (
         <div className="dash-recent">
-          <div className="dash-subtitle">直近4週間</div>
+          <div className="dash-subtitle">{tr('Last 4 weeks', '直近4週間')}</div>
           {active.map(h => (
             <div className="recent-row" key={h.name}>
               <span className="recent-name" title={h.name}>
@@ -131,7 +133,9 @@ export const HabitsDashboard: React.FC = () => {
         </div>
       )}
 
-      {archived > 0 && <div className="dash-foot">アーカイブ中の習慣 {archived}件は習慣ページで確認できます</div>}
+      {archived > 0 && <div className="dash-foot">
+          {tr(`${archived} archived habit${archived === 1 ? '' : 's'} on the habits page`, `アーカイブ中の習慣 ${archived}件は習慣ページで確認できます`)}
+        </div>}
     </div>
   )
 }
@@ -148,6 +152,7 @@ function isHabitsNoteOpen(): boolean {
 }
 
 export const EditorBanner: React.FC = () => {
+  useLanguage()
   const [show, setShow] = useState(isHabitsNoteOpen)
   useEffect(() => {
     const env = getEnv()
@@ -165,10 +170,18 @@ export const EditorBanner: React.FC = () => {
     <div className="habits-editor-banner">
       <HabitsIcon />
       <span className="text">
-        <strong>習慣ノート</strong> — Habits プラグインが習慣と記録を保存しています。プレビューではダッシュボードになります。
+        {lang() === 'en' ? (
+          <>
+            <strong>Habits note</strong> — the Habits plugin keeps your habits and check-ins here. The preview shows them as a dashboard.
+          </>
+        ) : (
+          <>
+            <strong>習慣ノート</strong> — Habits プラグインが習慣と記録を保存しています。プレビューではダッシュボードになります。
+          </>
+        )}
       </span>
       <button className="habits-button primary" onClick={() => habitsView.set(true)}>
-        習慣ページを開く
+        {tr('Open habits page', '習慣ページを開く')}
       </button>
     </div>
   )

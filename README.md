@@ -4,7 +4,7 @@
 
 A habit tracker for Inkdrop, inspired by TickTick's Habits. Register things you want to keep doing every day or every week, get notified at the times you choose, check them off, and see your streaks and completion rates.
 
-> The plugin's UI and the habits note format are in Japanese.
+> The UI is in English, or in Japanese when Japanese is one of your system languages (see the Language setting). The habits note can be written in English or Japanese.
 
 ## Install
 
@@ -19,27 +19,28 @@ Or search for "habits" in Inkdrop's Preferences → Plugins.
 - Open the habits page from **Habits** in the sidebar (`Cmd+Alt+B`).
   - Left: To do today / Done today / Off today / Archived. Click ○ to complete a habit, ⏭ to skip it for today. The seven cells on the right of each row are this week; clicking one cycles done → skipped → cleared, so you can also record past days.
   - Right: the selected habit's current streak, longest streak, total count and this month's completion rate, plus a monthly calendar and a six-month heatmap.
-- **＋ 習慣を追加** (Add habit) lets you set the name, emoji, frequency (daily / specific weekdays / N times a week / every N days), reminder times (more than one is fine) and start date.
+- **＋ Add habit** lets you set the name, emoji, frequency (daily / specific weekdays / N times a week / every N days), reminder times (more than one is fine) and start date.
 - Reminders arrive as a desktop notification and a modal inside Inkdrop. From the modal you can mark the habit done, snooze it for a few minutes, or skip it for today. Once a habit is done or skipped, it won't notify again that day.
 
 ## Data
 
-Habits and records are stored as Markdown in a note named "🔁 習慣". It syncs to your other devices through Inkdrop sync, and you're free to edit it by hand. The note is created when you add your first habit, and you can move it to another notebook afterwards.
+Habits and records are stored as Markdown in a note named "🔁 Habits" ("🔁 習慣" in Japanese). It syncs to your other devices through Inkdrop sync, and you're free to edit it by hand. The note is created when you add your first habit, and you can move it to another notebook afterwards.
 
 ```
-## 習慣
-- 💧 水を2L飲む | 毎日 | 09:00, 15:00
-- 🏃 ランニング | 月水金 | 07:00 | 開始 2026-10-01
-- 📚 読書 | 週3回 | 21:00
-- 🧹 掃除 | 3日ごと | | 開始 2026-10-01 | アーカイブ
+## Habits
+- 💧 Drink 2L of water | daily | 09:00, 15:00
+- 🏃 Running | Mon Wed Fri | 07:00 | start 2026-10-01
+- 📚 Reading | 3 times a week | 21:00
+- 🧹 Cleaning | every 3 days | | start 2026-10-01 | archived
 
-## 記録
-- 2026-10-16: ✓ 水を2L飲む · ⏭ 読書
+## Records
+- 2026-10-16: ✓ Drink 2L of water · ⏭ Reading
 ```
 
-- `## 習慣` (Habits): one line per habit — `emoji name | frequency | reminder times | 開始 YYYY-MM-DD (start date) | アーカイブ (archived)`.
-  - Frequency: `毎日` daily, `平日` weekdays, `週末` weekends, weekday letters such as `月水金` (Mon/Wed/Fri), `週3回` 3 times a week, `3日ごと` every 3 days.
-- `## 記録` (Records): one line per day, newest first. `✓` is done and `⏭` is skipped.
+- `## Habits`: one line per habit — `emoji name | frequency | reminder times | start YYYY-MM-DD | archived`.
+  - Frequency: `daily`, `weekdays`, `weekends`, weekdays such as `Mon Wed Fri`, `3 times a week`, `every 3 days`, `every other day`.
+- `## Records`: one line per day, newest first. `✓` is done and `⏭` is skipped.
+- The Japanese format (`## 習慣` / `## 記録`, `毎日`, `月水金`, `週3回`, `3日ごと`, `開始 YYYY-MM-DD`, `アーカイブ`) is read too, and a note keeps its own language when the plugin edits it. A new note is written in the UI language.
 
 How streaks are counted: skipped days don't break a streak. Today (or this week, for "N times a week" habits) doesn't break it either until the day is over.
 
@@ -51,7 +52,8 @@ How streaks are counted: skipped days don't break a streak. Today (or this week,
 | Notify missed reminders on startup | on | Notifies today's habits whose reminder time passed while Inkdrop was closed and that aren't recorded yet |
 | Snooze minutes | `10` | |
 | Week starts on | `monday` | Used for "N times a week" counts and the week display (`monday` / `sunday`) |
-| Notebook for the habits note | empty | Name of the notebook where the "🔁 習慣" note is created. If empty, a dedicated "Habits" notebook is created |
+| Notebook for the habits note | empty | Name of the notebook where the habits note is created. If empty, a dedicated "Habits" notebook is created |
+| Language | `auto` | UI language: `en` (English) / `ja` (Japanese). `auto` uses Japanese if it is one of your system languages, otherwise English |
 
 ## Commands
 
@@ -113,6 +115,8 @@ ipm install habits
 - 2026-10-16: ✓ 水を2L飲む · ⏭ 読書
 ```
 
+- 英語の書式（`## Habits` / `## Records`、`daily`、`Mon Wed Fri`、`3 times a week`、`every 3 days`、`start YYYY-MM-DD`、`archived`）でも読めます。プラグインが書き換えるときはノートの言語のまま書き、新しく作るノートは表示言語で作ります。
+
 連続日数の数え方: スキップした日は連続を途切れさせません。今日（「週◯回」なら今週）は、達成するまで連続を途切れさせません。
 
 ## 設定
@@ -124,6 +128,7 @@ ipm install habits
 | 「あとで」の再通知までの分数 | `10` | |
 | 週の始まり | `monday` | 「週◯回」の集計と週の表示に使います（`monday` / `sunday`） |
 | 習慣ノートを作るノートブック | 空 | 「🔁 習慣」ノートを作るノートブック名。空なら専用の「Habits」ノートブックを作ります |
+| Language | `auto` | 表示言語。`en`（英語）/ `ja`（日本語）。`auto` はシステムの言語に日本語が含まれていれば日本語、それ以外は英語 |
 
 ## コマンド
 

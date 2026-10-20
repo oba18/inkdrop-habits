@@ -11,11 +11,35 @@
  *
  *     ## 記録
  *     - 2026-10-16: ✓ 水を2L飲む · ⏭ 読書
+ *
+ * The same in English (either language is read; edits keep the note's own):
+ *
+ *     ## Habits
+ *     - 💧 Drink 2L of water | daily | 09:00, 15:00
+ *     - 🏃 Running | Mon Wed Fri | 07:00 | start 2026-10-01
+ *     - 📚 Reading | 3 times a week | 21:00
+ *     - 🧹 Cleaning | every 3 days | | start 2026-10-01 | archived
+ *
+ *     ## Records
+ *     - 2026-10-16: ✓ Drink 2L of water · ⏭ Reading
  */
 
+export type Lang = 'en' | 'ja'
+
 export const MARKER = '<!-- inkdrop-habits -->'
-export const HABITS_HEADING = '## 習慣'
-export const RECORDS_HEADING = '## 記録'
+const HEADINGS: Record<Lang, { habits: string; records: string }> = {
+  ja: { habits: '## 習慣', records: '## 記録' },
+  en: { habits: '## Habits', records: '## Records' }
+}
+
+/** The language a habits note is written in (its headings), else `fallback`. */
+export function noteLang(body: string, fallback: Lang = 'ja'): Lang {
+  for (const line of body.split('\n')) {
+    const s = sectionOf(line)
+    if (s === 'habits' || s === 'records') return /習慣|記録/.test(line) ? 'ja' : 'en'
+  }
+  return fallback
+}
 
 export type Frequency =
   | { kind: 'daily' }
@@ -83,6 +107,7 @@ export function weekStartOf(ds: string, weekStart: number): string {
 /* ---- parsing ---- */
 
 const DOW_CHARS = '日月火水木金土'
+const DOW_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 /** Display order of weekdays: Monday first */
 const DOW_ORDER = [1, 2, 3, 4, 5, 6, 0]
 const EMOJI_RE = /^(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|\p{Emoji_Modifier})*|\p{Regional_Indicator}{2})\s*/u
@@ -91,9 +116,34 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const RECORD_RE = /^\s*[-*]\s+(\d{4}-\d{2}-\d{2})\s*[:：]\s*(.*)$/
 const ITEM_SEP = ' · '
 
+function parseFrequencyEn(text: string): Frequency | null {
+  const s = text.trim().toLowerCase().replace(/\s+/g, ' ')
+  if (s === 'daily' || s === 'every day') return { kind: 'daily' }
+  if (s === 'weekdays') return { kind: 'weekdays', days: [1, 2, 3, 4, 5] }
+  if (s === 'weekends') return { kind: 'weekdays', days: [0, 6] }
+  if (s === 'every other day') return { kind: 'interval', every: 2 }
+  let m = /^(\d+)\s*(?:x|times?)\s*(?:a|per|\/)\s*week$/.exec(s) ?? /^(\d+)\s*\/\s*week$/.exec(s)
+  if (m) return { kind: 'weekly', times: Math.min(7, Math.max(1, Number(m[1]))) }
+  m = /^every (\d+) days?$/.exec(s)
+  if (m) {
+    const every = Math.max(1, Number(m[1]))
+    return every === 1 ? { kind: 'daily' } : { kind: 'interval', every }
+  }
+  const words = s.replace(/^every /, '').split(/[\s,/]+/).filter(Boolean)
+  const days = words.map(w => DOW_EN.findIndex(d => w.startsWith(d.toLowerCase())))
+  if (words.length && days.every(d => d >= 0)) {
+    const set = [...new Set(days)].sort()
+    return set.length === 7 ? { kind: 'daily' } : { kind: 'weekdays', days: set }
+  }
+  return null
+}
+
+/** Reads a frequency written in Japanese (`毎日`, `週3回`, `月水金`…) or English (`daily`, `3 times a week`, `Mon Wed Fri`…). */
 export function parseFrequency(text: string): Frequency | null {
   const s = text.replace(/\s+/g, '')
   if (s === '毎日' || s === '') return { kind: 'daily' }
+  const en = parseFrequencyEn(text)
+  if (en) return en
   if (s === '平日') return { kind: 'weekdays', days: [1, 2, 3, 4, 5] }
   if (s === '週末' || s === '土日') return { kind: 'weekdays', days: [0, 6] }
   if (s === '隔日') return { kind: 'interval', every: 2 }
@@ -112,7 +162,25 @@ export function parseFrequency(text: string): Frequency | null {
   return null
 }
 
-export function formatFrequency(f: Frequency): string {
+export function formatFrequency(f: Frequency, lang: Lang = 'ja'): string {
+  if (lang === 'en') {
+    switch (f.kind) {
+      case 'daily':
+        return 'daily'
+      case 'weekly':
+        return `${f.times} ${f.times === 1 ? 'time' : 'times'} a week`
+      case 'interval':
+        return f.every === 2 ? 'every other day' : `every ${f.every} days`
+      case 'weekdays': {
+        const key = [...f.days].sort().join('')
+        if (key === '12345') return 'weekdays'
+        if (key === '06') return 'weekends'
+        return DOW_ORDER.filter(d => f.days.includes(d))
+          .map(d => DOW_EN[d])
+          .join(' ')
+      }
+    }
+  }
   switch (f.kind) {
     case 'daily':
       return '毎日'
@@ -149,9 +217,9 @@ function parseHabitLine(line: string): Habit | null {
   let start: string | null = null
   let archived = false
   for (const f of fields.slice(3)) {
-    const s = /^開始\s*(\d{4}-\d{2}-\d{2})$/.exec(f)
+    const s = /^(?:開始|start)\s*:?\s*(\d{4}-\d{2}-\d{2})$/i.exec(f)
     if (s) start = s[1]
-    else if (f === 'アーカイブ') archived = true
+    else if (f === 'アーカイブ' || /^archived?$/i.test(f)) archived = true
   }
   return { name, emoji, frequency, times: [...new Set(times)].sort(), start, archived }
 }
@@ -161,10 +229,10 @@ export function normalizeTime(t: string): string {
   return m ? `${m[1].padStart(2, '0')}:${m[2]}` : t
 }
 
-export function formatHabitLine(h: Habit): string {
-  const fields = [`${h.emoji ? `${h.emoji} ` : ''}${h.name}`, formatFrequency(h.frequency), h.times.join(', ')]
-  if (h.start) fields.push(`開始 ${h.start}`)
-  if (h.archived) fields.push('アーカイブ')
+export function formatHabitLine(h: Habit, lang: Lang = 'ja'): string {
+  const fields = [`${h.emoji ? `${h.emoji} ` : ''}${h.name}`, formatFrequency(h.frequency, lang), h.times.join(', ')]
+  if (h.start) fields.push(lang === 'en' ? `start ${h.start}` : `開始 ${h.start}`)
+  if (h.archived) fields.push(lang === 'en' ? 'archived' : 'アーカイブ')
   // Drop an empty trailing times column.
   if (!h.times.length && fields.length === 3) fields.pop()
   return `- ${fields.join(' | ')}`
@@ -199,8 +267,8 @@ function sectionOf(line: string): Section | null {
   const t = line.trim()
   if (!/^#{1,6}\s/.test(t)) return null
   const title = t.replace(/^#+\s*/, '')
-  if (title.includes('記録')) return 'records'
-  if (title.includes('習慣')) return 'habits'
+  if (title.includes('記録') || /^records\b/i.test(title)) return 'records'
+  if (title.includes('習慣') || /^habits\b/i.test(title)) return 'habits'
   return 'none'
 }
 
@@ -234,23 +302,27 @@ export function parseNote(body: string): HabitData {
 
 /* ---- editing the note text ---- */
 
-export function newNoteBody(): string {
-  return [
-    MARKER,
-    '習慣の一覧と達成記録です。Habits プラグインが読み書きします（手で編集しても構いません）。',
-    '',
-    '書式: `- 絵文字 名前 | 頻度 | 通知時刻 | 開始 YYYY-MM-DD | アーカイブ`',
-    '頻度: 毎日 / 平日 / 週末 / 月水金 / 週3回 / 3日ごと',
-    '',
-    HABITS_HEADING,
-    '',
-    RECORDS_HEADING,
-    ''
-  ].join('\n')
+export function newNoteBody(lang: Lang = 'ja'): string {
+  const intro =
+    lang === 'en'
+      ? [
+          'Your habits and check-ins. The Habits plugin reads and writes this note (editing it by hand is fine).',
+          '',
+          'Format: `- emoji name | frequency | reminder times | start YYYY-MM-DD | archived`',
+          'Frequency: daily / weekdays / weekends / Mon Wed Fri / 3 times a week / every 3 days'
+        ]
+      : [
+          '習慣の一覧と達成記録です。Habits プラグインが読み書きします（手で編集しても構いません）。',
+          '',
+          '書式: `- 絵文字 名前 | 頻度 | 通知時刻 | 開始 YYYY-MM-DD | アーカイブ`',
+          '頻度: 毎日 / 平日 / 週末 / 月水金 / 週3回 / 3日ごと'
+        ]
+  return [MARKER, ...intro, '', HEADINGS[lang].habits, '', HEADINGS[lang].records, ''].join('\n')
 }
 
 /** Line ranges of the two sections; adds missing headings to `lines`. */
 function locate(lines: string[]) {
+  const headings = HEADINGS[noteLang(lines.join('\n'))]
   let habitsAt = -1
   let recordsAt = -1
   lines.forEach((line, i) => {
@@ -260,13 +332,13 @@ function locate(lines: string[]) {
   })
   if (habitsAt < 0) {
     const at = recordsAt < 0 ? lines.length : recordsAt
-    lines.splice(at, 0, HABITS_HEADING, '')
+    lines.splice(at, 0, headings.habits, '')
     if (recordsAt >= 0) recordsAt += 2
     habitsAt = at
   }
   if (recordsAt < 0) {
     if (lines.length && lines[lines.length - 1].trim() !== '') lines.push('')
-    lines.push(RECORDS_HEADING, '')
+    lines.push(headings.records, '')
     recordsAt = lines.length - 2
   }
   const sectionEnd = (from: number) => {
@@ -285,13 +357,14 @@ export function upsertHabit(body: string, habit: Habit, oldName?: string): strin
   for (let i = loc.habitsAt + 1; i < loc.habitsEnd; i++) {
     if (parseHabitLine(lines[i])?.name === target) idx = i
   }
+  const lang = noteLang(body)
   if (idx >= 0) {
-    lines[idx] = formatHabitLine(habit)
+    lines[idx] = formatHabitLine(habit, lang)
   } else {
     // After the last list item of the section.
     let at = loc.habitsAt + 1
     for (let i = loc.habitsAt + 1; i < loc.habitsEnd; i++) if (/^\s*[-*]\s/.test(lines[i])) at = i + 1
-    lines.splice(at, 0, formatHabitLine(habit))
+    lines.splice(at, 0, formatHabitLine(habit, lang))
   }
   let out = lines.join('\n')
   if (oldName && oldName !== habit.name) out = renameInRecords(out, oldName, habit.name)
@@ -522,12 +595,25 @@ export function totalDone(h: Habit, records: Records): number {
   return n
 }
 
-/** Short description of the schedule, e.g. "毎日 · 09:00, 15:00". */
-export function describeHabit(h: Habit): string {
-  const freq = h.frequency.kind === 'weekdays' && !['平日', '週末'].includes(formatFrequency(h.frequency))
-    ? `毎週 ${[...formatFrequency(h.frequency)].join('・')}`
-    : formatFrequency(h.frequency)
+/** Short description of the schedule in `lang`, e.g. "毎日 · 09:00, 15:00" / "Daily · 09:00, 15:00". */
+export function describeHabit(h: Habit, lang: Lang = 'ja'): string {
+  let freq: string
+  if (lang === 'en') {
+    const f = formatFrequency(h.frequency, 'en')
+    freq = h.frequency.kind === 'weekdays' && !['weekdays', 'weekends'].includes(f) ? `Every ${f.split(' ').join(', ')}` : f
+    freq = freq.charAt(0).toUpperCase() + freq.slice(1)
+  } else {
+    freq =
+      h.frequency.kind === 'weekdays' && !['平日', '週末'].includes(formatFrequency(h.frequency))
+        ? `毎週 ${[...formatFrequency(h.frequency)].join('・')}`
+        : formatFrequency(h.frequency)
+  }
   return h.times.length ? `${freq} · ${h.times.join(', ')}` : freq
+}
+
+/** Short weekday name (0 = Sunday) in `lang`: `月` / `Mon`. */
+export function weekdayName(day: number, lang: Lang = 'ja'): string {
+  return lang === 'en' ? DOW_EN[day] : DOW_CHARS[day]
 }
 
 export { DOW_CHARS, DOW_ORDER }

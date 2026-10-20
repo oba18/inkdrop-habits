@@ -4,6 +4,8 @@ import { AlertDialog } from './alert-dialog'
 import { pushAlert } from './alerts'
 import { EditDialog } from './edit-dialog'
 import { setEnv } from './env'
+import { languageConfig, tr } from './i18n'
+import { addMenu } from './menus'
 import { HabitScheduler, getScheduler, setScheduler, showDesktopNotification } from './scheduler'
 import { getStore, startStore, stopStore } from './store'
 import { DASHBOARD_TAG, EditorBanner, HabitsDashboard, remarkHabits, startNoteListMarker } from './preview'
@@ -16,64 +18,81 @@ const MAIN_LAYOUTS = ['main:full', 'main:slim']
 class HabitsPlugin implements IInkdropPlugin {
   config: Record<string, ConfigSchema> = {
     notificationStyle: {
-      title: '通知方法',
+      title: tr('Notification style', '通知方法'),
       type: 'string',
       default: 'both',
       enum: ['both', 'desktop', 'inapp'],
       description:
-        'both: デスクトップ通知と Inkdrop 画面中央のモーダル / desktop: デスクトップ通知のみ（失敗時はモーダルで表示） / inapp: モーダルのみ'
+        tr(
+          'both: desktop notification and a modal in Inkdrop / desktop: desktop notification only (falls back to the modal if it fails) / inapp: modal only',
+          'both: デスクトップ通知と Inkdrop 画面中央のモーダル / desktop: デスクトップ通知のみ（失敗時はモーダルで表示） / inapp: モーダルのみ'
+        )
     },
     notifyMissed: {
-      title: '起動時に今日の見逃した通知を出す',
-      description: 'Inkdrop を閉じていた間に通知時刻を過ぎた、まだ記録していない今日の習慣',
+      title: tr("Notify today's missed reminders on startup", '起動時に今日の見逃した通知を出す'),
+      description: tr(
+        "Today's habits whose reminder time passed while Inkdrop was closed and that aren't recorded yet",
+        'Inkdrop を閉じていた間に通知時刻を過ぎた、まだ記録していない今日の習慣'
+      ),
       type: 'boolean',
       default: true
     },
     snoozeMinutes: {
-      title: '「あとで」の再通知までの分数',
+      title: tr('Snooze minutes', '「あとで」の再通知までの分数'),
       type: 'integer',
       default: 10,
       minimum: 1
     },
     weekStartsOn: {
-      title: '週の始まり（「週◯回」の集計と週の表示）',
+      title: tr('Week starts on (for "N times a week" and the week display)', '週の始まり（「週◯回」の集計と週の表示）'),
       type: 'string',
       default: 'monday',
       enum: ['monday', 'sunday']
     },
     notebook: {
-      title: '習慣ノートを作るノートブック',
-      description: '最初の習慣を追加したときに「🔁 習慣」ノートを作る場所（ノートブック名）。空なら専用の「Habits」ノートブックを作ります。作成後は自由に移動できます',
+      title: tr('Notebook for the habits note', '習慣ノートを作るノートブック'),
+      description: tr(
+        'Name of the notebook where the habits note is created when you add your first habit. If empty, a "Habits" notebook is created. You can move the note afterwards',
+        '最初の習慣を追加したときに「🔁 習慣」ノートを作る場所（ノートブック名）。空なら専用の「Habits」ノートブックを作ります。作成後は自由に移動できます'
+      ),
       type: 'string',
       default: ''
-    }
+    },
+    language: languageConfig
   }
 
   private commands: { dispose(): void } | null = null
+  private menu: { dispose(): void } | null = null
+  private languageWatch: { dispose(): void } | null = null
   private marker: { dispose(): void } | null = null
 
   activate(env: Environment) {
     setEnv(env)
     this.commands = env.commands.add(document.body, {
       'habits:show': {
-        description: 'Habits: 習慣を表示',
+        description: tr('Habits: Show habits', 'Habits: 習慣を表示'),
         didDispatch: () => {
           if (env.isMainWindow) habitsView.set(true)
         }
       },
       'habits:add': {
-        description: 'Habits: 習慣を追加',
+        description: tr('Habits: Add habit', 'Habits: 習慣を追加'),
         didDispatch: () => editing.set({})
       },
       'habits:show-status': {
-        description: 'Habits: 今日このあとの通知を表示',
+        description: tr("Habits: Show today's remaining reminders", 'Habits: 今日このあとの通知を表示'),
         didDispatch: () => this.showStatus(env)
       },
       'habits:test-notification': {
-        description: 'Habits: テスト通知を送る',
+        description: tr('Habits: Send a test notification', 'Habits: テスト通知を送る'),
         didDispatch: () => this.testNotification(env)
       }
     } as any)
+    this.menu = addMenu(env)
+    this.languageWatch = env.config.onDidChange('habits.language', () => {
+      this.menu?.dispose()
+      this.menu = addMenu(env)
+    })
 
     // Only the main window keeps the page and notifies, so a note opened in a
     // separate window doesn't produce duplicate notifications.
@@ -103,7 +122,7 @@ class HabitsPlugin implements IInkdropPlugin {
       })
       .catch(err => {
         console.error('[habits] failed to start:', err)
-        env.notifications.addError('Habits: 習慣の読み込みに失敗しました', {
+        env.notifications.addError(tr('Habits: Failed to load habits', 'Habits: 習慣の読み込みに失敗しました'), {
           detail: err instanceof Error ? err.message : String(err),
           dismissable: true
         })
@@ -113,26 +132,32 @@ class HabitsPlugin implements IInkdropPlugin {
   private showStatus(env: Environment) {
     const scheduler = getScheduler()
     if (!scheduler) {
-      env.notifications.addWarning('Habits: 通知が動いていません', {
-        detail: 'メインウィンドウで実行してください。',
+      env.notifications.addWarning(tr('Habits: Reminders are not running', 'Habits: 通知が動いていません'), {
+        detail: tr('Run this in the main window.', 'メインウィンドウで実行してください。'),
         dismissable: true
       })
       return
     }
     const list = scheduler.upcoming()
-    env.notifications.addInfo(`Habits: 今日このあとの通知 ${list.length}件`, {
-      detail: list.map(({ habit, time }) => `・${time} ${habit.emoji} ${habit.name}`).join('\n') || 'ありません',
+    env.notifications.addInfo(tr(`Habits: ${list.length} reminders left today`, `Habits: 今日このあとの通知 ${list.length}件`), {
+      detail: list.map(({ habit, time }) => `${tr('•', '・')} ${time} ${habit.emoji} ${habit.name}`).join('\n') || tr('None', 'ありません'),
       dismissable: true
     })
   }
 
   private async testNotification(env: Environment) {
     const permission = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
-    const result = await showDesktopNotification('🔁 Habits テスト', 'デスクトップ通知は正常に動いています')
-    pushAlert({ id: `test:${Date.now()}`, name: 'Habits のテスト通知です', emoji: '🔁', date: '', time: '', test: true })
-    const detail = `Notification.permission: ${permission} → 結果: ${result}`
-    if (result === 'shown') env.notifications.addSuccess('テスト通知を送りました', { detail, dismissable: true })
-    else env.notifications.addWarning('デスクトップ通知を出せませんでした', { detail, dismissable: true })
+    const result = await showDesktopNotification(
+      tr('🔁 Habits test', '🔁 Habits テスト'),
+      tr('Desktop notifications are working', 'デスクトップ通知は正常に動いています')
+    )
+    pushAlert({ id: `test:${Date.now()}`, name: tr('This is a Habits test notification', 'Habits のテスト通知です'), emoji: '🔁', date: '', time: '', test: true })
+    const detail = `Notification.permission: ${permission} → ${tr('result', '結果')}: ${result}`
+    if (result === 'shown') env.notifications.addSuccess(tr('Test notification sent', 'テスト通知を送りました'), { detail, dismissable: true })
+    else env.notifications.addWarning(tr('Could not show a desktop notification', 'デスクトップ通知を出せませんでした'), {
+        detail,
+        dismissable: true
+      })
   }
 
   deactivate(env: Environment) {
@@ -143,6 +168,10 @@ class HabitsPlugin implements IInkdropPlugin {
     stopStore()
     this.commands?.dispose()
     this.commands = null
+    this.menu?.dispose()
+    this.menu = null
+    this.languageWatch?.dispose()
+    this.languageWatch = null
     this.marker?.dispose()
     this.marker = null
     const i = env.markdownRenderer.remarkPlugins.indexOf(remarkHabits)

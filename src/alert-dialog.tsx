@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { mark } from './actions'
 import { dismissAlert, dismissAllAlerts, subscribeAlerts, type HabitAlert } from './alerts'
 import { getConfig, getEnv } from './env'
+import { tr, useLanguage } from './i18n'
 import { getScheduler } from './scheduler'
 import { showHabits } from './view-state'
 
@@ -12,6 +13,7 @@ import { showHabits } from './view-state'
  * off, snoozed or skipped for today right here.
  */
 export const AlertDialog: React.FC = () => {
+  useLanguage()
   const [{ Dialog, Button }] = useState(() => ({
     Dialog: getEnv().components.classes.Dialog as DialogType,
     Button: getEnv().components.getComponentClass<ButtonProps>('Button')!
@@ -50,7 +52,11 @@ export const AlertDialog: React.FC = () => {
         <div className="habits-alert">
           <div className="habits-alert-header">
             <span className="icon">🔁</span>
-            <span>習慣のリマインダー{alerts.length > 1 ? `（${alerts.length}件）` : ''}</span>
+            <span>
+              {alerts.length > 1
+                ? tr(`Habit reminders (${alerts.length})`, `習慣のリマインダー（${alerts.length}件）`)
+                : tr('Habit reminder', '習慣のリマインダー')}
+            </span>
           </div>
           <ul className="habits-alert-list">
             {alerts.map(alert => (
@@ -59,19 +65,19 @@ export const AlertDialog: React.FC = () => {
                   {alert.emoji && <span className="emoji">{alert.emoji}</span>}
                   <span>{alert.name}</span>
                 </div>
-                {alert.time && <div className="when">{alert.time} の習慣です</div>}
+                {alert.time && <div className="when">{tr(`${alert.time} habit`, `${alert.time} の習慣です`)}</div>}
                 <div className="buttons">
                   {!alert.test && (
                     <>
                       <Button primary onClick={() => act(alert, 'done')}>
-                        ✓ 完了
+                        ✓ {tr('Done', '完了')}
                       </Button>
-                      <Button onClick={() => getScheduler()?.snooze(alert)}>{snoozeMinutes}分後に再通知</Button>
-                      <Button onClick={() => act(alert, 'skip')}>⏭ 今日はスキップ</Button>
+                      <Button onClick={() => getScheduler()?.snooze(alert)}>{tr(`Remind me in ${snoozeMinutes} min`, `${snoozeMinutes}分後に再通知`)}</Button>
+                      <Button onClick={() => act(alert, 'skip')}>⏭ {tr('Skip today', '今日はスキップ')}</Button>
                     </>
                   )}
                   <Button basic onClick={() => dismissAlert(alert.id)}>
-                    閉じる
+                    {tr('Close', '閉じる')}
                   </Button>
                 </div>
               </li>
@@ -82,9 +88,9 @@ export const AlertDialog: React.FC = () => {
       </Dialog.Content>
       <Dialog.Actions className="habits-actions">
         <Button basic onClick={open}>
-          習慣を開く
+          {tr('Open habits', '習慣を開く')}
         </Button>
-        {alerts.length > 1 && <Button onClick={dismissAllAlerts}>すべて閉じる</Button>}
+        {alerts.length > 1 && <Button onClick={dismissAllAlerts}>{tr('Close all', 'すべて閉じる')}</Button>}
       </Dialog.Actions>
     </Dialog>
   )

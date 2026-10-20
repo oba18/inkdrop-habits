@@ -2,10 +2,11 @@ import type { Note } from 'inkdrop-model'
 
 import { getConfig, getEnv, peekEnv } from './env'
 import { isHabitsNote, newNoteBody, parseNote, type HabitData } from './model'
+import { lang, tr } from './i18n'
 
 const NOTE_ID_KEY = 'inkdrop-habits:note-id'
 const PAGE_SIZE = 200
-const NOTE_TITLE = '🔁 習慣'
+const noteTitle = () => tr('🔁 Habits', '🔁 習慣')
 const HABITS_BOOK = 'Habits'
 /** Same as the sidebar's Habits icon. */
 const HABITS_ICON_SVG =
@@ -111,7 +112,7 @@ class HabitStore {
   private async write(fn: (body: string) => string) {
     const env = getEnv()
     if (!this.noteId) {
-      await this.create(fn(newNoteBody()))
+      await this.create(fn(newNoteBody(lang())))
       return
     }
     const noteId = this.noteId
@@ -142,7 +143,7 @@ class HabitStore {
     const now = Date.now()
     const note = {
       _id: env.localDB.notes.createId(),
-      title: NOTE_TITLE,
+      title: noteTitle(),
       body,
       bookId,
       doctype: 'markdown',
@@ -160,8 +161,11 @@ class HabitStore {
     saveNoteId(note._id)
     this.apply(note)
     this.emit()
-    env.notifications.addInfo('習慣ノートを作成しました', {
-      detail: `「${NOTE_TITLE}」に習慣と記録を保存します。ノートは好きなノートブックへ移動できます。`,
+    env.notifications.addInfo(tr('Created the habits note', '習慣ノートを作成しました'), {
+      detail: tr(
+        `Habits and check-ins are saved in "${noteTitle()}". You can move the note to any notebook.`,
+        `「${noteTitle()}」に習慣と記録を保存します。ノートは好きなノートブックへ移動できます。`
+      ),
       dismissable: true
     })
   }
@@ -251,6 +255,6 @@ export function stopStore() {
 
 /** The store, for code paths that only run while the plugin is active. */
 export function requireStore(): HabitStore {
-  if (!store || !peekEnv()) throw new Error('習慣プラグインが開始していません')
+  if (!store || !peekEnv()) throw new Error(tr('The Habits plugin has not started', '習慣プラグインが開始していません'))
   return store
 }

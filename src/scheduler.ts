@@ -1,5 +1,6 @@
 import { currentAlerts, dismissAlert, pushAlert, type HabitAlert } from './alerts'
 import { getConfig, getEnv } from './env'
+import { tr } from './i18n'
 import { todayState, toDateString, type Habit } from './model'
 import { getStore } from './store'
 import { showHabits } from './view-state'
@@ -191,7 +192,9 @@ export async function notify(alert: HabitAlert) {
   let desktop: DesktopResult | null = null
   if (notificationStyle !== 'inapp') {
     const label = `${alert.emoji ? `${alert.emoji} ` : ''}${alert.name}`
-    desktop = await showDesktopNotification(`🔁 ${label}`, alert.time ? `習慣の時間です（${alert.time}）` : '習慣のリマインダーです', {
+    desktop = await showDesktopNotification(`🔁 ${label}`, alert.time
+        ? tr(`Time for your habit (${alert.time})`, `習慣の時間です（${alert.time}）`)
+        : tr('Habit reminder', '習慣のリマインダーです'), {
       tag: alert.id,
       onClick: () => {
         const env = getEnv()

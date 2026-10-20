@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react'
 
 import { cycleMark, mark, today as todayString } from './actions'
 import { getConfig, getEnv, openNote, peekEnv } from './env'
+import { lang, locale, tr, useLanguage } from './i18n'
 import {
-  DOW_CHARS,
   addDays,
   describeHabit,
+  weekdayName,
   firstDay,
   isScheduled,
   markOf,
@@ -75,7 +76,7 @@ export function useWeekStart(): number {
 
 export function report(err: unknown) {
   console.error('[habits] update failed:', err)
-  peekEnv()?.notifications.addError('習慣を更新できませんでした', {
+  peekEnv()?.notifications.addError(tr('Could not update the habit', '習慣を更新できませんでした'), {
     detail: err instanceof Error ? err.message : String(err),
     dismissable: true
   })
@@ -126,6 +127,7 @@ SideBarMenuItemHabits.displayName = 'HabitsSideBarMenuItem'
 /* ---- the page ---- */
 
 export const HabitsView: React.FC = () => {
+  useLanguage()
   const active = habitsView.use()
   if (!active || !peekEnv()) return null
   return <HabitsBody />
@@ -217,12 +219,12 @@ const HabitsBody: React.FC = () => {
   return (
     <div className="habits-view">
       <header className="habits-header">
-        <h1>習慣</h1>
+        <h1>{tr('Habits', '習慣')}</h1>
         <span className="date">
-          {parseDate(today).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' })}
+          {parseDate(today).toLocaleDateString(locale(), { month: 'long', day: 'numeric', weekday: 'short' })}
         </span>
         {dueToday > 0 && (
-          <span className="progress" title="今日の達成">
+          <span className="progress" title={tr("Today's progress", '今日の達成')}>
             <span className="bar">
               <span style={{ width: `${(doneToday / dueToday) * 100}%` }} />
             </span>
@@ -231,23 +233,23 @@ const HabitsBody: React.FC = () => {
         )}
         <span className="spacer" />
         {noteId && (
-          <button className="habits-button" onClick={() => openNote(noteId)} title="習慣と記録を保存しているノートを開く">
-            ノートを開く
+          <button className="habits-button" onClick={() => openNote(noteId)} title={tr('Open the note that stores your habits and check-ins', '習慣と記録を保存しているノートを開く')}>
+            {tr('Open note', 'ノートを開く')}
           </button>
         )}
         <button className="habits-button primary" onClick={() => editing.set({})}>
-          ＋ 習慣を追加
+          ＋ {tr('Add habit', '習慣を追加')}
         </button>
       </header>
 
       {!loaded ? (
-        <div className="habits-empty">読み込み中…</div>
+        <div className="habits-empty">{tr('Loading…', '読み込み中…')}</div>
       ) : !data.habits.length ? (
         <div className="habits-empty">
           <div className="big">🔁</div>
-          <p>毎日・毎週続けたいことを登録すると、時間になったら通知します。</p>
+          <p>{tr('Add things you want to keep doing every day or week, and get reminded at the times you choose.', '毎日・毎週続けたいことを登録すると、時間になったら通知します。')}</p>
           <button className="habits-button primary" onClick={() => editing.set({})}>
-            ＋ 最初の習慣を追加
+            ＋ {tr('Add your first habit', '最初の習慣を追加')}
           </button>
         </div>
       ) : (
@@ -255,15 +257,15 @@ const HabitsBody: React.FC = () => {
           <div className="habits-list">
             <WeekHead week={week} today={today} />
             <div className="habits-list-scroll">
-              {section('今日やる', groups.todo, 'todo')}
-              {section('今日の記録済み', groups.handled, 'handled')}
-              {section('今日はお休み', groups.off, 'off')}
+              {section(tr('To do today', '今日やる'), groups.todo, 'todo')}
+              {section(tr('Done today', '今日の記録済み'), groups.handled, 'handled')}
+              {section(tr('Off today', '今日はお休み'), groups.off, 'off')}
               {groups.archived.length > 0 && (
                 <button className="archived-toggle" onClick={() => setShowArchived(!showArchived)}>
-                  {showArchived ? '▾' : '▸'} アーカイブ（{groups.archived.length}）
+                  {showArchived ? '▾' : '▸'} {tr('Archived', 'アーカイブ')}{tr(` (${groups.archived.length})`, `（${groups.archived.length}）`)}
                 </button>
               )}
-              {showArchived && section('アーカイブ', groups.archived, 'archived')}
+              {showArchived && section(tr('Archived', 'アーカイブ'), groups.archived, 'archived')}
             </div>
           </div>
           {current && <HabitDetail habit={current} data={data} today={today} weekStart={weekStart} />}
@@ -273,13 +275,28 @@ const HabitsBody: React.FC = () => {
   )
 }
 
+/** `日` / `週` (`day(s)` / `week(s)`) for a streak in `unit`s. */
+function unitLabel(unit: 'day' | 'week', n: number): string {
+  if (lang() === 'ja') return unit === 'week' ? '週' : '日'
+  return `${unit}${n === 1 ? '' : 's'}`
+}
+
+function streakLabel(n: number, unit: 'day' | 'week'): string {
+  return tr(`${n}-${unit} streak`, `連続 ${n}${unitLabel(unit, n)}`)
+}
+
+/** Month `m` (1–12) of `y` by name: `October` / `10月`, with the year (`October 2026` / `2026年10月`) when asked. */
+function monthName(y: number, m: number, width: 'long' | 'short', withYear = false): string {
+  return new Date(y, m - 1, 1).toLocaleDateString(locale(), withYear ? { year: 'numeric', month: width } : { month: width })
+}
+
 /** Weekday labels over the rows' day cells. */
 export const WeekHead: React.FC<{ week: string[]; today: string }> = ({ week, today }) => (
   <div className="week-head">
     <span className="spacer" />
     {week.map(d => (
       <span key={d} className={`dow ${d === today ? 'today' : ''} dow-${parseDate(d).getDay()}`}>
-        <span>{DOW_CHARS[parseDate(d).getDay()]}</span>
+        <span>{weekdayName(parseDate(d).getDay(), lang())}</span>
         <span className="num">{parseDate(d).getDate()}</span>
       </span>
     ))}
@@ -296,7 +313,13 @@ const CheckButton: React.FC<{ mark: Mark | null; onClick: () => void; disabled?:
       onClick()
     }}
     disabled={disabled}
-    title={mark === 'done' ? '完了を取り消す' : mark === 'skip' ? 'スキップを取り消す' : '完了にする'}
+    title={
+      mark === 'done'
+        ? tr('Undo done', '完了を取り消す')
+        : mark === 'skip'
+          ? tr('Undo skip', 'スキップを取り消す')
+          : tr('Mark as done', '完了にする')
+    }
   >
     {mark === 'done' ? '✓' : mark === 'skip' ? '⏭' : ''}
   </button>
@@ -325,24 +348,24 @@ export const HabitRow: React.FC<{
       <span className="main">
         <span className="name">{habit.name}</span>
         <span className="meta">
-          {describeHabit(habit)}
+          {describeHabit(habit, lang())}
           {st.week && (
             <span className={`week-goal ${st.week.done >= st.week.goal ? 'met' : ''}`}>
-              今週 {st.week.done}/{st.week.goal}
+              {tr('This week', '今週')} {st.week.done}/{st.week.goal}
             </span>
           )}
         </span>
       </span>
       {streak.current > 0 && (
-        <span className="streak" title={`連続 ${streak.current}${streak.unit === 'week' ? '週' : '日'}`}>
+        <span className="streak" title={streakLabel(streak.current, streak.unit)}>
           🔥{streak.current}
-          <small>{streak.unit === 'week' ? '週' : '日'}</small>
+          <small>{unitLabel(streak.unit, streak.current)}</small>
         </span>
       )}
       {!habit.archived && !st.mark && st.due && (
         <button
           className="row-action"
-          title="今日はスキップ"
+          title={tr('Skip today', '今日はスキップ')}
           onClick={e => {
             e.stopPropagation()
             run(mark(habit.name, 'skip'))
@@ -386,7 +409,8 @@ export const DayCell: React.FC<{ habit: Habit; data: HabitData; date: string; to
     .filter(Boolean)
     .join(' ')
   const d = parseDate(date)
-  const title = `${d.getMonth() + 1}/${d.getDate()}(${DOW_CHARS[d.getDay()]}) ${m === 'done' ? '完了' : m === 'skip' ? 'スキップ' : future ? '' : '未記録'}`
+  const state = m === 'done' ? tr('done', '完了') : m === 'skip' ? tr('skipped', 'スキップ') : future ? '' : tr('not recorded', '未記録')
+  const title = `${d.toLocaleDateString(locale(), { month: 'numeric', day: 'numeric', weekday: 'short' })} ${state}`
   return (
     <button
       className={cls}
@@ -414,7 +438,7 @@ const HabitDetail: React.FC<{ habit: Habit; data: HabitData; today: string; week
   useEffect(() => setMonth(today.slice(0, 7)), [habit.name])
   const streak = streaks(habit, data.records, today, weekStart)
   const stats = monthStats(habit, data.records, month, today)
-  const unit = streak.unit === 'week' ? '週' : '日'
+  const unit = unitLabel(streak.unit, 2)
 
   const shiftMonth = (n: number) => {
     const [y, m] = month.split('-').map(Number)
@@ -440,13 +464,13 @@ const HabitDetail: React.FC<{ habit: Habit; data: HabitData; today: string; week
         <div className="titles">
           <h2>{habit.name}</h2>
           <div className="meta">
-            {describeHabit(habit)}
-            {habit.start && ` · ${habit.start} から`}
-            {habit.archived && ' · アーカイブ済み'}
+            {describeHabit(habit, lang())}
+            {habit.start && tr(` · from ${habit.start}`, ` · ${habit.start} から`)}
+            {habit.archived && tr(' · archived', ' · アーカイブ済み')}
           </div>
         </div>
         <button className="habits-button" onClick={() => editing.set({ habit })}>
-          編集
+          {tr('Edit', '編集')}
         </button>
       </div>
 
@@ -456,50 +480,55 @@ const HabitDetail: React.FC<{ habit: Habit; data: HabitData; today: string; week
             {streak.current}
             <small>{unit}</small>
           </div>
-          <div className="label">🔥 連続</div>
+          <div className="label">🔥 {tr('Current streak', '連続')}</div>
         </div>
         <div className="tile">
           <div className="value">
             {streak.longest}
             <small>{unit}</small>
           </div>
-          <div className="label">最長連続</div>
+          <div className="label">{tr('Longest streak', '最長連続')}</div>
         </div>
         <div className="tile">
           <div className="value">
             {totalDone(habit, data.records)}
-            <small>回</small>
+            <small>{tr('times', '回')}</small>
           </div>
-          <div className="label">合計</div>
+          <div className="label">{tr('Total', '合計')}</div>
         </div>
         <div className="tile">
           <div className="value">
             {stats.rate === null ? '–' : Math.round(stats.rate * 100)}
             {stats.rate !== null && <small>%</small>}
           </div>
-          <div className="label">{month === today.slice(0, 7) ? '今月' : `${m}月`}の達成率</div>
+          <div className="label">
+            {month === today.slice(0, 7)
+              ? tr('Completion this month', '今月の達成率')
+              : tr(`${monthName(y, m, 'long')} completion`, `${m}月の達成率`)}
+          </div>
         </div>
       </div>
 
       <div className="month">
         <div className="month-nav">
-          <button onClick={() => shiftMonth(-1)} title="前の月">
+          <button onClick={() => shiftMonth(-1)} title={tr('Previous month', '前の月')}>
             ‹
           </button>
           <span>
-            {y}年{m}月
+            {monthName(y, m, 'long', true)}
             <small>
-              {stats.done}回{stats.target ? ` / 目標 ${stats.target}` : ''}
+              {tr(`${stats.done} times`, `${stats.done}回`)}
+              {stats.target ? tr(` / goal ${stats.target}`, ` / 目標 ${stats.target}`) : ''}
             </small>
           </span>
-          <button onClick={() => shiftMonth(1)} title="次の月" disabled={month >= today.slice(0, 7)}>
+          <button onClick={() => shiftMonth(1)} title={tr('Next month', '次の月')} disabled={month >= today.slice(0, 7)}>
             ›
           </button>
         </div>
         <div className="month-grid">
           {heads.map(d => (
             <span key={d} className={`head dow-${d}`}>
-              {DOW_CHARS[d]}
+              {weekdayName(d, lang())}
             </span>
           ))}
           {cells.map((d, i) =>
@@ -511,8 +540,9 @@ const HabitDetail: React.FC<{ habit: Habit; data: HabitData; today: string; week
           )}
         </div>
         <div className="legend">
-          <span className="day done" /> 完了 <span className="day skip" /> スキップ <span className="day missed" /> 未達成
-          <span className="hint">日付をクリックで 完了 → スキップ → 取消</span>
+          <span className="day done" /> {tr('Done', '完了')} <span className="day skip" /> {tr('Skipped', 'スキップ')}{' '}
+          <span className="day missed" /> {tr('Missed', '未達成')}
+          <span className="hint">{tr('Click a day: done → skipped → cleared', '日付をクリックで 完了 → スキップ → 取消')}</span>
         </div>
       </div>
 
@@ -537,7 +567,7 @@ const Heatmap: React.FC<{ habit: Habit; data: HabitData; today: string; weekStar
   )
   return (
     <div className="heatmap">
-      <div className="heatmap-title">過去半年</div>
+      <div className="heatmap-title">{tr('Last 6 months', '過去半年')}</div>
       <div className="heatmap-grid">
         {columns.map((col, w) => (
           <span className="col" key={w}>
@@ -548,7 +578,7 @@ const Heatmap: React.FC<{ habit: Habit; data: HabitData; today: string; weekStar
                 <span
                   key={d}
                   className={`sq ${m ?? ''} ${d > today ? 'future' : ''} ${scheduled ? '' : 'off'}`}
-                  title={`${d}${m === 'done' ? ' 完了' : m === 'skip' ? ' スキップ' : ''}`}
+                  title={`${d}${m === 'done' ? ` ${tr('done', '完了')}` : m === 'skip' ? ` ${tr('skipped', 'スキップ')}` : ''}`}
                 />
               )
             })}
