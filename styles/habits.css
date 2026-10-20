@@ -1,0 +1,1075 @@
+/* ---- the Habits page takes the place of the note list and editor ---- */
+
+body.habits-view-active .main-layout > .note-list-bar-layout,
+body.habits-view-active .main-layout > .editor-layout,
+body.habits-view-active .main-layout > .graph-view-local {
+  display: none !important;
+}
+
+/* Other plugins' full-page views share the spot: the most recent one wins. */
+body.habits-view-active .main-layout > .reminder-tasks-view,
+body.habits-view-active .main-layout > .graph-view-global {
+  display: none !important;
+}
+
+/* Only "Habits" looks selected while the page is showing. */
+body.habits-view-active .sidebar-menu-item.active:not(.sidebar-menu-item-habits) {
+  background: transparent !important;
+}
+
+.habits-view,
+.habits-dashboard,
+.habits-editor-banner {
+  --habit-accent: var(--primary-color, #4772fa);
+  --habit-done: var(--color-green-500, #2fa36b);
+  --habit-skip: rgba(128, 128, 128, 0.45);
+  --habit-line: rgba(128, 128, 128, 0.2);
+  --habit-hover: rgba(128, 128, 128, 0.1);
+  --habit-missed: var(--color-red-500, #e5534b);
+}
+
+.habits-view {
+  /* Painted like the editor, following the active theme. */
+  background: var(--editor-background);
+  color: var(--text-color);
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 14px;
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+.habits-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 20px 28px 12px;
+  border-bottom: 1px solid var(--habit-line);
+
+  h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .date {
+    opacity: 0.6;
+  }
+
+  .progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+
+    .bar {
+      width: 90px;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--habit-line);
+      overflow: hidden;
+
+      span {
+        display: block;
+        height: 100%;
+        background: var(--habit-done);
+        transition: width 0.25s;
+      }
+    }
+  }
+
+  .spacer {
+    flex: 1;
+  }
+}
+
+.habits-button {
+  border: 1px solid var(--habit-line);
+  background: transparent;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--habit-hover);
+  }
+
+  &.primary {
+    border-color: transparent;
+    background: var(--habit-accent);
+    color: var(--primary-button-text-color, #fff) !important;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
+  }
+}
+
+.habits-empty {
+  margin: 80px auto;
+  text-align: center;
+  opacity: 0.85;
+
+  .big {
+    font-size: 48px;
+  }
+
+  p {
+    margin: 12px 0 20px;
+    opacity: 0.75;
+  }
+}
+
+.habits-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* ---- list ---- */
+
+.habits-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Only the rows scroll, so the week header needs no background of its own
+   (the theme's editor background is often translucent). */
+.habits-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: 0 20px 40px;
+}
+
+/* Columns shared by the week header and each row's day cells. */
+.habits-list .week-head,
+.habit-row .week-cells {
+  --cell: 28px;
+}
+
+.habits-list .week-head {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: 0 20px;
+  padding: 16px 8px 4px;
+  /* Keeps the columns lined up with the rows beside their scrollbar. */
+  overflow: hidden;
+  scrollbar-gutter: stable;
+  font-size: 11px;
+
+  .spacer {
+    flex: 1;
+  }
+
+  .dow {
+    width: var(--cell);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0.55;
+
+    .num {
+      font-size: 10px;
+    }
+
+    &.today {
+      opacity: 1;
+      color: var(--habit-accent);
+      font-weight: 700;
+    }
+  }
+}
+
+.habits-section {
+  margin-top: 14px;
+
+  h2 {
+    margin: 0 0 4px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    opacity: 0.6;
+
+    .count {
+      margin-left: 6px;
+      font-weight: 400;
+    }
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &.off .habit-row,
+  &.archived .habit-row {
+    opacity: 0.6;
+  }
+}
+
+.habit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--habit-hover);
+  }
+
+  &.selected {
+    background: color-mix(in srgb, var(--habit-accent) 12%, transparent);
+  }
+
+  &.marked.done .name {
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+
+  > .emoji {
+    width: 24px;
+    text-align: center;
+    font-size: 18px;
+  }
+
+  .main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .meta {
+    font-size: 12px;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .week-goal {
+    margin-left: 8px;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: var(--habit-line);
+
+    &.met {
+      background: color-mix(in srgb, var(--habit-done) 25%, transparent);
+    }
+  }
+
+  .streak {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    small {
+      font-size: 10px;
+      opacity: 0.7;
+      margin-left: 1px;
+    }
+  }
+
+  .row-action {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+    opacity: 0;
+
+    &:hover {
+      background: var(--habit-hover);
+    }
+  }
+
+  &:hover .row-action {
+    opacity: 0.7;
+  }
+
+  .week-cells {
+    display: flex;
+    gap: 4px;
+  }
+}
+
+.habit-check {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--habit-skip);
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+
+  &:hover:not(:disabled) {
+    border-color: var(--habit-done);
+  }
+
+  &.done {
+    border-color: var(--habit-done);
+    background: var(--habit-done);
+    color: var(--primary-button-text-color, #fff) !important;
+  }
+
+  &.skip {
+    border-style: dashed;
+    font-size: 11px;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+/* A day: list rows' week cells and the month grid. */
+:is(.habits-view, .habits-dashboard) .day {
+  width: var(--cell, 28px);
+  height: var(--cell, 28px);
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--habit-hover);
+  cursor: pointer;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+
+  &:hover:not(:disabled) {
+    border-color: var(--habit-done);
+  }
+
+  &.done {
+    background: var(--habit-done);
+    color: var(--primary-button-text-color, #fff) !important;
+  }
+
+  &.skip {
+    background: repeating-linear-gradient(45deg, var(--habit-line) 0 3px, transparent 3px 6px);
+  }
+
+  &.missed {
+    border-color: color-mix(in srgb, var(--habit-missed) 55%, transparent);
+  }
+
+  &.off:not(.done):not(.skip) {
+    background: transparent;
+    opacity: 0.45;
+  }
+
+  &.future {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  &.today {
+    box-shadow: 0 0 0 2px var(--habit-accent);
+  }
+}
+
+.archived-toggle {
+  margin: 16px 0 0 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+/* ---- detail panel ---- */
+
+.habit-detail {
+  width: 340px;
+  flex: none;
+  overflow-y: auto;
+  border-left: 1px solid var(--habit-line);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  .detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    .emoji {
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .titles {
+      flex: 1;
+      min-width: 0;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 17px;
+      word-break: break-word;
+    }
+
+    .meta {
+      font-size: 12px;
+      opacity: 0.6;
+      margin-top: 2px;
+    }
+  }
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+
+  .tile {
+    border-radius: 10px;
+    background: var(--habit-hover);
+    padding: 10px 12px;
+  }
+
+  .value {
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+
+    small {
+      font-size: 12px;
+      font-weight: 400;
+      opacity: 0.65;
+      margin-left: 2px;
+    }
+  }
+
+  .label {
+    font-size: 12px;
+    opacity: 0.6;
+  }
+}
+
+.habit-detail .month {
+  --cell: 36px;
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-weight: 600;
+
+    small {
+      margin-left: 8px;
+      font-weight: 400;
+      font-size: 12px;
+      opacity: 0.6;
+    }
+
+    button {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 8px;
+      border-radius: 6px;
+
+      &:hover:not(:disabled) {
+        background: var(--habit-hover);
+      }
+
+      &:disabled {
+        opacity: 0.25;
+        cursor: default;
+      }
+    }
+  }
+
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, var(--cell));
+    justify-content: space-between;
+    row-gap: 6px;
+
+    .head {
+      text-align: center;
+      font-size: 11px;
+      opacity: 0.55;
+    }
+  }
+
+  .legend {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    font-size: 11px;
+    opacity: 0.7;
+
+    .day {
+      --cell: 12px;
+      border-radius: 3px;
+      cursor: default;
+      margin-left: 4px;
+    }
+
+    .hint {
+      flex-basis: 100%;
+      opacity: 0.7;
+    }
+  }
+}
+
+:is(.habits-view, .habits-dashboard) .dow-0 {
+  color: var(--color-red-500, #e5534b);
+}
+
+:is(.habits-view, .habits-dashboard) .dow-6 {
+  color: var(--color-blue-500, #4772fa);
+}
+
+.heatmap {
+  .heatmap-title {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-bottom: 6px;
+  }
+
+  .heatmap-grid {
+    display: flex;
+    gap: 2px;
+  }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sq {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    background: var(--habit-hover);
+
+    &.done {
+      background: var(--habit-done);
+    }
+
+    &.skip {
+      background: var(--habit-skip);
+    }
+
+    &.off:not(.done) {
+      opacity: 0.4;
+    }
+
+    &.future {
+      visibility: hidden;
+    }
+  }
+}
+
+/* Narrow window: the detail goes under the list. */
+@media (max-width: 1000px) {
+  .habits-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .habits-list {
+    overflow: visible;
+  }
+
+  .habit-detail {
+    width: auto;
+    border-left: none;
+    border-top: 1px solid var(--habit-line);
+    overflow: visible;
+  }
+}
+
+/* ---- dialogs ---- */
+
+.modal-container.habits-edit-dialog,
+.modal-container.habits-alert-dialog,
+.modal-container:has(.habits-form),
+.modal-container:has(.habits-alert) {
+  align-items: center !important;
+  justify-content: center !important;
+
+  .modal-content {
+    margin: 0 auto !important;
+  }
+
+  .ui.modal {
+    width: 440px !important;
+    max-width: calc(100vw - 32px);
+  }
+}
+
+.habits-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .left {
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .confirm span {
+    font-size: 13px;
+  }
+}
+
+.habits-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px;
+
+  h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+  }
+
+  input[type='text'],
+  input:not([type]),
+  input[type='number'],
+  input[type='time'],
+  input[type='date'] {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--input-border-color, rgba(128, 128, 128, 0.35));
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--primary-color, #4772fa);
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    &.inline {
+      font-size: 13px;
+    }
+  }
+
+  .name-row .emoji-input {
+    width: 52px;
+    text-align: center;
+    font-size: 18px;
+  }
+
+  .name-row .name-input {
+    flex: 1;
+  }
+
+  input[type='number'] {
+    width: 64px;
+  }
+
+  .field-label {
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.65;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+
+  .emoji-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+
+    button {
+      font-size: 17px;
+      width: 32px;
+      height: 32px;
+
+      &:hover {
+        background: rgba(128, 128, 128, 0.15);
+      }
+
+      &.selected {
+        background: color-mix(in srgb, var(--primary-color, #4772fa) 20%, transparent);
+      }
+    }
+  }
+
+  .segmented {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 8px;
+    background: rgba(128, 128, 128, 0.12);
+
+    button {
+      flex: 1;
+      padding: 5px 4px;
+      font-size: 13px;
+
+      &.selected {
+        background: var(--primary-color, #4772fa);
+        color: var(--primary-button-text-color, #fff);
+      }
+    }
+  }
+
+  .weekdays {
+    display: flex;
+    gap: 6px;
+
+    button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(128, 128, 128, 0.35);
+
+      &.selected {
+        background: var(--primary-color, #4772fa);
+        border-color: transparent;
+        color: var(--primary-button-text-color, #fff);
+      }
+    }
+  }
+
+  .times {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+
+    .time {
+      display: inline-flex;
+      align-items: center;
+
+      button {
+        padding: 2px 6px;
+        opacity: 0.5;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+
+    .add-time {
+      font-size: 13px;
+      padding: 5px 8px;
+      color: var(--primary-color, #4772fa);
+
+      &:hover {
+        background: rgba(128, 128, 128, 0.12);
+      }
+    }
+  }
+
+  .hint {
+    font-size: 12px;
+    opacity: 0.55;
+  }
+
+  .link {
+    font-size: 12px;
+    color: var(--primary-color, #4772fa);
+  }
+}
+
+.habits-form-error,
+.habits-alert-error {
+  margin-top: 6px;
+  color: var(--color-red-500, #e5534b);
+  font-size: 13px;
+}
+
+.habits-alert {
+  padding: 4px 2px;
+
+  .habits-alert-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .habits-alert-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 60vh;
+    overflow-y: auto;
+
+    li {
+      border-radius: 10px;
+      background: rgba(128, 128, 128, 0.1);
+      padding: 12px 14px;
+    }
+  }
+
+  .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+
+    .emoji {
+      font-size: 22px;
+    }
+  }
+
+  .when {
+    font-size: 12px;
+    opacity: 0.65;
+    margin: 2px 0 10px;
+  }
+
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* ---- the habits note: editor banner ---- */
+
+.habits-editor-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  background: color-mix(in srgb, var(--habit-done) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--habit-done) 35%, transparent);
+
+  .habits-icon {
+    flex: none;
+    font-size: 18px;
+    color: var(--habit-done);
+  }
+
+  .text {
+    flex: 1;
+    min-width: 0;
+    opacity: 0.85;
+  }
+
+  .habits-button {
+    flex: none;
+    font-size: 12px;
+    padding: 3px 10px;
+  }
+}
+
+/* ---- the habits note: preview dashboard ---- */
+
+.habits-dashboard {
+  margin: 0 0 24px;
+  padding: 16px 16px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--habit-line);
+  font-size: 14px;
+  line-height: 1.4;
+  user-select: none;
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  .dash-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    .habits-icon {
+      font-size: 20px;
+      color: var(--habit-done);
+    }
+
+    .dash-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .dash-progress {
+      font-size: 12px;
+      padding: 1px 8px;
+      border-radius: 10px;
+      background: var(--habit-line);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .spacer {
+      flex: 1;
+    }
+
+    .habits-button {
+      font-size: 12px;
+      padding: 3px 10px;
+    }
+  }
+
+  /* Undo the preview's Markdown list styles. */
+  ul {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  li {
+    margin: 0 !important;
+  }
+
+  li::before {
+    content: none !important;
+  }
+
+  .habits-list.embedded {
+    overflow: visible;
+    padding: 0;
+    background: transparent;
+
+    .week-head {
+      margin: 0;
+      padding: 8px 8px 4px;
+      scrollbar-gutter: auto;
+    }
+  }
+
+  .habit-row .row-action {
+    display: none;
+  }
+
+  .dash-empty,
+  .dash-foot {
+    font-size: 12px;
+    opacity: 0.6;
+    padding: 8px;
+  }
+
+  .dash-recent {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--habit-line);
+  }
+
+  .dash-subtitle {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-bottom: 6px;
+  }
+
+  .recent-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 8px;
+  }
+
+  .recent-name {
+    width: 140px;
+    flex: none;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .recent-cells {
+    display: flex;
+    gap: 3px;
+
+    .sq {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: var(--habit-hover);
+
+      &.done {
+        background: var(--habit-done);
+      }
+
+      &.skip {
+        background: var(--habit-skip);
+      }
+
+      &.week-start {
+        margin-left: 4px;
+      }
+
+      &.today {
+        box-shadow: 0 0 0 1.5px var(--habit-accent);
+      }
+    }
+  }
+}

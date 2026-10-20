@@ -1,0 +1,18 @@
+{
+  "menu": [
+    {
+      "label": "Plugins",
+      "submenu": [
+        {
+          "label": "Habits",
+          "submenu": [
+            { "label": "習慣を表示", "command": "habits:show" },
+            { "label": "習慣を追加…", "command": "habits:add" },
+            { "label": "今日このあとの通知を表示", "command": "habits:show-status" },
+            { "label": "テスト通知を送る", "command": "habits:test-notification" }
+          ]
+        }
+      ]
+    }
+  ]
+}
