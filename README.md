@@ -1,18 +1,30 @@
 # Habits
 
-TickTick の「習慣」のような習慣トラッカーです。毎日・毎週続けたいことを登録すると、決めた時刻に通知し、達成を記録して連続日数や達成率を表示します。
+**English** | [日本語](https://github.com/oba18/inkdrop-habits/blob/main/README.ja.md)
 
-## 使い方
+A habit tracker for Inkdrop, inspired by TickTick's Habits. Register things you want to keep doing every day or every week, get notified at the times you choose, check them off, and see your streaks and completion rates.
 
-- サイドバーの **Habits**（`Cmd+Alt+B`）で習慣ページを開きます。
-  - 左側: 今日やる / 今日の記録済み / 今日はお休み / アーカイブ。○ をクリックで完了、⏭ で今日はスキップ。右側の7マスは今週で、クリックすると 完了 → スキップ → 取消 と切り替わります（過去の日もさかのぼって記録できます）。
-  - 右側: 選んだ習慣の連続日数・最長連続・合計回数・今月の達成率、月のカレンダー、過去半年のヒートマップ。
-- **＋ 習慣を追加** で名前、絵文字、頻度（毎日 / 曜日指定 / 週◯回 / ◯日ごと）、通知時刻（複数可）、開始日を設定します。
-- 通知はデスクトップ通知と Inkdrop 内のモーダルで届きます。モーダルから「完了」「◯分後に再通知」「今日はスキップ」を選べます。完了またはスキップした習慣には、その日はもう通知しません。
+> The plugin's UI and the habits note format are in Japanese.
 
-## データ
+## Install
 
-習慣と記録は「🔁 習慣」ノートに Markdown で保存されます。Inkdrop の同期で他の端末にも共有され、手で編集しても構いません。最初の習慣を追加したときに作成され、あとから別のノートブックへ移動できます。
+```sh
+ipm install habits
+```
+
+Or search for "habits" in Inkdrop's Preferences → Plugins.
+
+## Usage
+
+- Open the habits page from **Habits** in the sidebar (`Cmd+Alt+B`).
+  - Left: To do today / Done today / Off today / Archived. Click ○ to complete a habit, ⏭ to skip it for today. The seven cells on the right of each row are this week; clicking one cycles done → skipped → cleared, so you can also record past days.
+  - Right: the selected habit's current streak, longest streak, total count and this month's completion rate, plus a monthly calendar and a six-month heatmap.
+- **＋ 習慣を追加** (Add habit) lets you set the name, emoji, frequency (daily / specific weekdays / N times a week / every N days), reminder times (more than one is fine) and start date.
+- Reminders arrive as a desktop notification and a modal inside Inkdrop. From the modal you can mark the habit done, snooze it for a few minutes, or skip it for today. Once a habit is done or skipped, it won't notify again that day.
+
+## Data
+
+Habits and records are stored as Markdown in a note named "🔁 習慣". It syncs to your other devices through Inkdrop sync, and you're free to edit it by hand. The note is created when you add your first habit, and you can move it to another notebook afterwards.
 
 ```
 ## 習慣
@@ -25,21 +37,39 @@ TickTick の「習慣」のような習慣トラッカーです。毎日・毎�
 - 2026-10-16: ✓ 水を2L飲む · ⏭ 読書
 ```
 
-連続日数の数え方: スキップした日は連続を途切れさせません。今日（「週◯回」なら今週）は、達成するまで連続を途切れさせません。
+- `## 習慣` (Habits): one line per habit — `emoji name | frequency | reminder times | 開始 YYYY-MM-DD (start date) | アーカイブ (archived)`.
+  - Frequency: `毎日` daily, `平日` weekdays, `週末` weekends, weekday letters such as `月水金` (Mon/Wed/Fri), `週3回` 3 times a week, `3日ごと` every 3 days.
+- `## 記録` (Records): one line per day, newest first. `✓` is done and `⏭` is skipped.
 
-## コマンド
+How streaks are counted: skipped days don't break a streak. Today (or this week, for "N times a week" habits) doesn't break it either until the day is over.
 
-| コマンド | 内容 |
+## Settings
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| Notification style | `both` | `both`: desktop notification and modal / `desktop`: desktop notification only (falls back to the modal if it fails) / `inapp`: modal only |
+| Notify missed reminders on startup | on | Notifies today's habits whose reminder time passed while Inkdrop was closed and that aren't recorded yet |
+| Snooze minutes | `10` | |
+| Week starts on | `monday` | Used for "N times a week" counts and the week display (`monday` / `sunday`) |
+| Notebook for the habits note | empty | Name of the notebook where the "🔁 習慣" note is created. If empty, a dedicated "Habits" notebook is created |
+
+## Commands
+
+| Command | Description |
 | --- | --- |
-| `habits:show` | 習慣ページを表示 |
-| `habits:add` | 習慣を追加 |
-| `habits:show-status` | 今日このあとの通知を一覧 |
-| `habits:test-notification` | テスト通知 |
+| `habits:show` | Show the habits page |
+| `habits:add` | Add a habit |
+| `habits:show-status` | List today's remaining reminders |
+| `habits:test-notification` | Send a test notification |
 
-## 開発
+## Development
 
 ```sh
 npm install
-npm run build      # lib/ に出力
+npm run build      # outputs to lib/
 npm run typecheck
 ```
+
+## License
+
+MIT
