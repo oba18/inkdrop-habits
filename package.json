@@ -1,6 +1,6 @@
 {
   "name": "habits",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "TickTick-style habit tracker: daily / weekly habits with check-ins, streaks and reminders",
   "keywords": [
     "inkdrop",
