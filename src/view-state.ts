@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { Habit } from './model'
-import { announcePageView, onOtherPageView } from './page-view'
+import { announcePageView, closeOnOpenNote, onOtherPageView } from './page-view'
 
 /** A value with listeners, usable from React through `use()`. */
 function observable<T>(initial: T, onChange?: (v: T) => void) {
@@ -39,9 +39,11 @@ export const habitsView = observable(false, v => {
 
 const PAGE_VIEW_ID = 'habits'
 
-/** Closes the Habits page when another full-page view (Tasks, Graph…) opens. */
+/** Closes the Habits page when another full-page view (Tasks, Graph…) opens, or a note is opened. */
 export function closeOnOtherPageView(): () => void {
-  return onOtherPageView(PAGE_VIEW_ID, () => habitsView.set(false))
+  const close = () => habitsView.set(false)
+  const stops = [onOtherPageView(PAGE_VIEW_ID, close), closeOnOpenNote(close)]
+  return () => stops.forEach(s => s())
 }
 
 export function showHabits() {
