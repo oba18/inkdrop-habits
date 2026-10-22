@@ -16,7 +16,7 @@ Or search for "habits" in Inkdrop's Preferences → Plugins.
 
 ## Usage
 
-- Open the habits page from **Habits** in the sidebar (`Cmd+Alt+B`).
+- Open the habits page from **Habits** in the sidebar (`Cmd+Alt+B`), or press `⌘K` and type `habits` (or `習慣`) and Enter. `add habit` opens the add dialog.
   - Left: To do today / Done today / Off today / Archived. Click ○ to complete a habit, ⏭ to skip it for today. The seven cells on the right of each row are this week; clicking one cycles done → skipped → cleared, so you can also record past days.
   - Right: the selected habit's current streak, longest streak, total count and this month's completion rate, plus a monthly calendar and a six-month heatmap.
 - **＋ Add habit** lets you set the name, emoji, frequency (daily / specific weekdays / N times a week / every N days), reminder times (more than one is fine) and start date.
@@ -94,7 +94,7 @@ ipm install habits
 
 ## 使い方
 
-- サイドバーの **Habits**（`Cmd+Alt+B`）で習慣ページを開きます。
+- サイドバーの **Habits**（`Cmd+Alt+B`）で習慣ページを開きます。`⌘K` を押して `習慣`（または `habits`）と入力して Enter でも開けます。`習慣を追加` で追加ダイアログが開きます。
   - 左側: 今日やる / 今日の記録済み / 今日はお休み / アーカイブ。○ をクリックで完了、⏭ で今日はスキップ。右側の7マスは今週で、クリックすると 完了 → スキップ → 取消 と切り替わります（過去の日もさかのぼって記録できます）。
   - 右側: 選んだ習慣の連続日数・最長連続・合計回数・今月の達成率、月のカレンダー、過去半年のヒートマップ。
 - **＋ 習慣を追加** で名前、絵文字、頻度（毎日 / 曜日指定 / 週◯回 / ◯日ごと）、通知時刻（複数可）、開始日を設定します。

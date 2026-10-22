@@ -6,6 +6,7 @@ import { EditDialog } from './edit-dialog'
 import { setEnv } from './env'
 import { languageConfig, tr } from './i18n'
 import { addMenu } from './menus'
+import { registerJumpSource } from './jump-source'
 import { HabitScheduler, getScheduler, setScheduler, showDesktopNotification } from './scheduler'
 import { getStore, startStore, stopStore } from './store'
 import { DASHBOARD_TAG, EditorBanner, HabitsDashboard, remarkHabits, startNoteListMarker } from './preview'
@@ -64,6 +65,7 @@ class HabitsPlugin implements IInkdropPlugin {
   private commands: { dispose(): void } | null = null
   private menu: { dispose(): void } | null = null
   private languageWatch: { dispose(): void } | null = null
+  private stopJump: (() => void) | null = null
   private marker: { dispose(): void } | null = null
 
   activate(env: Environment) {
@@ -97,6 +99,11 @@ class HabitsPlugin implements IInkdropPlugin {
     // Only the main window keeps the page and notifies, so a note opened in a
     // separate window doesn't produce duplicate notifications.
     if (!env.isMainWindow) return
+    // ⌘K: type "habits" / "習慣" to open the habits page.
+    this.stopJump = registerJumpSource(env, 'habits-views', 'Habits', () => tr('Open the habits page', '習慣ページを開く'), [
+      { id: 'habits', icon: '🔁', en: 'Habits', ja: '習慣', keywords: 'habit tracker streak', command: 'habits:show' },
+      { id: 'add', icon: '➕', en: 'Add habit', ja: '習慣を追加', keywords: 'habits new', command: 'habits:add' }
+    ])
     env.components.registerClass(AlertDialog, 'HabitsAlertDialog')
     env.layouts.addComponentToLayout('modal', 'HabitsAlertDialog')
     env.components.registerClass(EditDialog, 'HabitsEditDialog')
@@ -161,6 +168,8 @@ class HabitsPlugin implements IInkdropPlugin {
   }
 
   deactivate(env: Environment) {
+    this.stopJump?.()
+    this.stopJump = null
     habitsView.set(false)
     editing.set(null)
     getScheduler()?.stop()
