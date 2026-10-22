@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { Habit } from './model'
+import { announcePageView, onOtherPageView } from './page-view'
 
 /** A value with listeners, usable from React through `use()`. */
 function observable<T>(initial: T, onChange?: (v: T) => void) {
@@ -31,7 +32,17 @@ function observable<T>(initial: T, onChange?: (v: T) => void) {
 export const ACTIVE_CLASS = 'habits-view-active'
 
 /** Whether the Habits page is showing, in place of the note list and editor. */
-export const habitsView = observable(false, v => document.body.classList.toggle(ACTIVE_CLASS, v))
+export const habitsView = observable(false, v => {
+  document.body.classList.toggle(ACTIVE_CLASS, v)
+  if (v) announcePageView(PAGE_VIEW_ID)
+})
+
+const PAGE_VIEW_ID = 'habits'
+
+/** Closes the Habits page when another full-page view (Tasks, Graph…) opens. */
+export function closeOnOtherPageView(): () => void {
+  return onOtherPageView(PAGE_VIEW_ID, () => habitsView.set(false))
+}
 
 export function showHabits() {
   habitsView.set(true)

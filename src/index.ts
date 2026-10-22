@@ -11,7 +11,7 @@ import { HabitScheduler, getScheduler, setScheduler, showDesktopNotification } f
 import { getStore, startStore, stopStore } from './store'
 import { DASHBOARD_TAG, EditorBanner, HabitsDashboard, remarkHabits, startNoteListMarker } from './preview'
 import { HabitsView, SideBarMenuItemHabits } from './view'
-import { editing, habitsView } from './view-state'
+import { closeOnOtherPageView, editing, habitsView } from './view-state'
 
 /** Main layouts that hold the note list, where the Habits page takes its place. */
 const MAIN_LAYOUTS = ['main:full', 'main:slim']
@@ -66,6 +66,7 @@ class HabitsPlugin implements IInkdropPlugin {
   private menu: { dispose(): void } | null = null
   private languageWatch: { dispose(): void } | null = null
   private stopJump: (() => void) | null = null
+  private stopPageView: (() => void) | null = null
   private marker: { dispose(): void } | null = null
 
   activate(env: Environment) {
@@ -100,6 +101,7 @@ class HabitsPlugin implements IInkdropPlugin {
     // separate window doesn't produce duplicate notifications.
     if (!env.isMainWindow) return
     // ⌘K: type "habits" / "習慣" to open the habits page.
+    this.stopPageView = closeOnOtherPageView()
     this.stopJump = registerJumpSource(env, 'habits-views', 'Habits', () => tr('Open the habits page', '習慣ページを開く'), [
       { id: 'habits', icon: '🔁', en: 'Habits', ja: '習慣', keywords: 'habit tracker streak', command: 'habits:show' },
       { id: 'add', icon: '➕', en: 'Add habit', ja: '習慣を追加', keywords: 'habits new', command: 'habits:add' }
@@ -170,6 +172,8 @@ class HabitsPlugin implements IInkdropPlugin {
   deactivate(env: Environment) {
     this.stopJump?.()
     this.stopJump = null
+    this.stopPageView?.()
+    this.stopPageView = null
     habitsView.set(false)
     editing.set(null)
     getScheduler()?.stop()
